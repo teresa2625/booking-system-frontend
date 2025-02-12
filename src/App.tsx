@@ -49,18 +49,18 @@ const App: React.FC = () => {
         {isUnauthorized && (
           <Route path="*" element={<Navigate to="/login" />} />
         )}
-        {/* <Route
+        <Route
           path="/doctor-dashboard"
           element={<Dashboard role={ALLOW_ROLES[0]} />}
-        /> */}
-        <Route
+        />
+        {/* <Route
           path="/doctor-dashboard"
           element={
             <PrivateRoute allowedRoles={[ALLOW_ROLES[0]]}>
               <Dashboard role={ALLOW_ROLES[0]} />
             </PrivateRoute>
           }
-        />
+        /> */}
         <Route
           path="/admin-dashboard"
           element={

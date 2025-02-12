@@ -5,6 +5,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import styled from "@emotion/styled";
 import axios from "axios";
+import NotesDialog from "./NotesDialog";
 
 export const StyleWrapper = styled.div`
   .fc-button.fc-prev-button,
@@ -33,6 +34,10 @@ interface CalendarEvent {
 const DoctorDashboard: React.FC = () => {
   const url = "http://localhost:5000/bookings";
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [noteInfo, setNoteInfo] = useState<any>();
+  const [takeNotes, setTakeNotes] = useState(false);
+  const handleOpen = () => setTakeNotes(true);
+  const handleClose = () => setTakeNotes(false);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -76,26 +81,36 @@ const DoctorDashboard: React.FC = () => {
   }, []);
 
   return (
-    <StyleWrapper>
-      <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
-        headerToolbar={{
-          left: "prev,next today",
-          center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay",
-        }}
-        events={events}
-        eventColor="#776B5D"
-        eventTimeFormat={{
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }}
-        editable={false}
-        eventClick={(info) => alert(`Booking Details: ${info.event.title}`)}
-      />
-    </StyleWrapper>
+    <>
+      <StyleWrapper>
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          headerToolbar={{
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay",
+          }}
+          events={events}
+          eventColor="#776B5D"
+          eventTimeFormat={{
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }}
+          editable={false}
+          eventClick={(info) => {
+            handleOpen();
+            setNoteInfo(info.event);
+          }}
+        />
+      </StyleWrapper>
+      <NotesDialog
+        open={takeNotes}
+        handleClose={handleClose}
+        info={noteInfo}
+      ></NotesDialog>
+    </>
   );
 };
 
