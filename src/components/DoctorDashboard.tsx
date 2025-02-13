@@ -29,6 +29,7 @@ interface CalendarEvent {
   title: string;
   start: string;
   end: string;
+  id: string;
 }
 
 const DoctorDashboard: React.FC = () => {
@@ -69,6 +70,7 @@ const DoctorDashboard: React.FC = () => {
             title: booking.customer_name,
             start,
             end,
+            id: booking.id,
           };
         });
         setEvents(calendarEvents);

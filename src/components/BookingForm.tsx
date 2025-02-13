@@ -80,6 +80,7 @@ const BookingForm: React.FC = () => {
       email: email,
       date: year + " " + month + " " + date,
       time: hour + ":" + (min === "0" ? "00" : min),
+      status: "Pending",
     };
     handleSubmit(bookingFormat);
   };

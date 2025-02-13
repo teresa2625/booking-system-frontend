@@ -5,8 +5,32 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import axios from "axios";
 
 const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
+  const handleChange = (patientId: string, patientNotes: string) => {
+    console.log("handleChange");
+    const bookingUpdateFormat = {
+      id: patientId,
+      note: patientNotes,
+      status: "Completed",
+    };
+    handleSubmit(bookingUpdateFormat);
+  };
+  const handleSubmit = async (data: any) => {
+    console.log("doctor Notes submitted:", data);
+
+    try {
+      const response = await axios.patch(
+        "http://localhost:5000/bookings",
+        data,
+      );
+      console.log("Booking updated:", response);
+    } catch (err) {
+      console.log("Booking update failed:", err);
+    }
+  };
+
   return (
     <React.Fragment>
       <Dialog
@@ -16,10 +40,11 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
           component: "form",
           onSubmit: (event: React.FormEvent<HTMLFormElement>) => {
             event.preventDefault();
-            // const formData = new FormData(event.currentTarget);
-            // const formJson = Object.fromEntries((formData as any).entries());
-            // const email = formJson.email;
-            console.log(info?.title);
+            const formData = new FormData(event.currentTarget);
+            const formJson = Object.fromEntries((formData as any).entries());
+            const notesDetail = formJson.notes;
+            console.log(info?.id);
+            handleChange(info?.id, notesDetail);
             handleClose();
           },
         }}
@@ -30,6 +55,7 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
             autoFocus
             required
             margin="dense"
+            name="notes"
             label="Notes"
             fullWidth
             variant="standard"
