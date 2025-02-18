@@ -6,9 +6,10 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import axios from "axios";
+import { UpdateBooking } from "types/booking";
 
 const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
-  const handleChange = (patientId: string, patientNotes: string) => {
+  const handleChange = (patientId: number, patientNotes: string) => {
     console.log("handleChange");
     const bookingUpdateFormat = {
       id: patientId,
@@ -17,7 +18,7 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
     };
     handleSubmit(bookingUpdateFormat);
   };
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: UpdateBooking) => {
     console.log("doctor Notes submitted:", data);
 
     try {
@@ -58,7 +59,7 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
             name="notes"
             label="Notes"
             fullWidth
-            variant="standard"
+            variant="outlined"
           />
         </DialogContent>
         <DialogActions>

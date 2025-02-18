@@ -12,6 +12,7 @@ import SignUp from "./pages/SignUp";
 import PrivateRoute from "./components/PrivateRoute";
 import Dashboard from "./pages/Dashboard";
 import useLocalStorageWithExpiry from "hooks/useLocalStorageWithExpiry";
+import AdminDashboard from "pages/AdminDashboard";
 
 const App: React.FC = () => {
   const token = localStorage.getItem("token");
@@ -65,7 +66,7 @@ const App: React.FC = () => {
           path="/admin-dashboard"
           element={
             <PrivateRoute allowedRoles={[ALLOW_ROLES[1]]}>
-              <Dashboard role={ALLOW_ROLES[1]} />
+              <AdminDashboard role={ALLOW_ROLES[1]} />
             </PrivateRoute>
           }
         />

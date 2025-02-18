@@ -6,4 +6,15 @@ export interface Booking {
     date: string;
     time: string;
   }
+
+  export interface UpdateBooking {
+    id: number;
+    note: string;
+    status: string;
+  }
+
+  export interface BookedSlots {
+    date: string;
+    time: string;
+  }
   

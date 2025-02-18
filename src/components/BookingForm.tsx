@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import axios from "axios";
-import { Booking } from "../types/booking";
+import { BookedSlots, Booking } from "../types/booking";
 import dayjs, { Dayjs } from "dayjs";
 import { DemoContainer } from "@mui/x-date-pickers/internals/demo";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -16,6 +16,11 @@ import { PickersActionBarProps } from "@mui/x-date-pickers/PickersActionBar";
 import useId from "@mui/material/utils/useId";
 
 const BookingForm: React.FC = () => {
+  const url = "http://localhost:5000/bookings";
+  const [selectedDateTime, setSelectedDateTime] = React.useState<Dayjs | null>(
+    null,
+  );
+  const [bookedSlots, setBookedSlots] = React.useState<BookedSlots[]>([]);
   const [bookingDateTime, setBookingDateTime] = React.useState<Dayjs | null>(
     null,
   );
@@ -93,6 +98,40 @@ const BookingForm: React.FC = () => {
     } catch (err) {
       console.log("Booking failed:", err);
     }
+  };
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const response = await axios.get(url);
+        console.log("response", response.data);
+        if (response.status !== 200) {
+          throw new Error("Failed to fetch bookings");
+        }
+        const bookings: any[] = await response.data;
+        const BookedData = bookings.map((booking) => {
+          const bookingDate = booking.booking_date.split("T")[0];
+          return {
+            date: bookingDate,
+            time: booking.booking_time,
+          };
+        });
+        console.log(BookedData);
+        setBookedSlots(BookedData);
+      } catch (error) {
+        console.error("Error fetching booked slots:", error);
+      }
+    };
+
+    fetchBookings();
+  }, []);
+
+  const isSlotBooked = (date: Dayjs, time: Dayjs) => {
+    return bookedSlots.some(
+      (slot) =>
+        slot.date === date.format("YYYY-MM-DD") &&
+        slot.time === time.format("HH:mm"),
+    );
   };
 
   return (
@@ -173,6 +212,21 @@ const BookingForm: React.FC = () => {
           views={["year", "month", "day", "hours", "minutes"]}
           defaultValue={dayjs()}
           disablePast
+          shouldDisableTime={(time, view) => {
+            return bookedSlots.some((slot) => {
+              if (
+                time.isSame(slot.date, "year") &&
+                time.isSame(slot.date, "month") &&
+                time.isSame(slot.date, "date") &&
+                time.isSame(slot.date + slot.time, "hour") &&
+                time.isSame(slot.date + slot.time, "minute")
+              ) {
+                return true;
+              } else {
+                return false;
+              }
+            });
+          }}
           minutesStep={30}
           ampmInClock
           onChange={(newValue, context) => {
