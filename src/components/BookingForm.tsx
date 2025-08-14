@@ -162,6 +162,7 @@ const BookingForm: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!doctor) return;
     const fetchBookings = async () => {
       try {
         const response = await axios.get(url, {
