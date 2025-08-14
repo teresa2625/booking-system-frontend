@@ -13,31 +13,43 @@ import Stack from "@mui/material/Stack";
 import DialogActions from "@mui/material/DialogActions";
 import Typography from "@mui/material/Typography";
 import { PickersActionBarProps } from "@mui/x-date-pickers/PickersActionBar";
-import useId from "@mui/material/utils/useId";
+import { useId } from "react";
+import { usePickerContext } from "@mui/x-date-pickers/hooks";
+import Chip from "@mui/material/Chip";
+import { DateViewRendererProps } from "@mui/x-date-pickers";
+import { DateOrTimeViewWithMeridiem } from "@mui/x-date-pickers/internals";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+
+// TODO: clean up, validation, pre submit check
 
 const BookingForm: React.FC = () => {
   const url = "http://localhost:5000/bookings";
-  const [selectedDateTime, setSelectedDateTime] = React.useState<Dayjs | null>(
-    null,
-  );
   const [bookedSlots, setBookedSlots] = React.useState<BookedSlots[]>([]);
   const [bookingDateTime, setBookingDateTime] = React.useState<Dayjs | null>(
-    null,
+    dayjs(),
   );
+  const [currentView, setCurrentView] =
+    React.useState<DateOrTimeViewWithMeridiem>("day");
   const [fullName, setFullName] = React.useState<string>("");
   const [contactEmail, setContactEmail] = React.useState<string>("");
   const [phoneNum, setPhoneNum] = React.useState<string>("");
+  const [doctor, setDoctor] = React.useState<string>("");
 
   function CustomAction(props: PickersActionBarProps) {
-    const { onAccept, onClear, className } = props;
+    const { className } = props;
     const id = useId();
+    const { clearValue, acceptValueChanges } = usePickerContext();
     return (
       <DialogActions className={className}>
         <Button
           id={`picker-actions-${id}`}
           aria-haspopup="true"
           onClick={() => {
-            onClear();
+            setBookingDateTime(null); // reset your controlled value
+            clearValue?.(); // still call MUI’s internal clear just in case
           }}
         >
           Clear
@@ -45,11 +57,13 @@ const BookingForm: React.FC = () => {
         <Button
           id={`picker-actions-${id}`}
           aria-haspopup="true"
+          disabled={!doctor}
           onClick={() => {
             handleChange(
               fullName,
               phoneNum,
               contactEmail,
+              doctor,
               bookingDateTime?.year() ? bookingDateTime?.year().toString() : "",
               bookingDateTime?.month()
                 ? (bookingDateTime?.month() + 1).toString()
@@ -60,7 +74,7 @@ const BookingForm: React.FC = () => {
                 ? bookingDateTime?.minute().toString()
                 : "",
             );
-            onAccept();
+            acceptValueChanges();
           }}
         >
           Submit
@@ -69,10 +83,56 @@ const BookingForm: React.FC = () => {
     );
   }
 
+  const TimeChipsRenderer = ({
+    value,
+    onChange,
+  }: DateViewRendererProps<"hours">) => {
+    const times = React.useMemo(() => {
+      const baseDate = value ?? dayjs();
+      const start = baseDate.hour(8).minute(0).second(0);
+      const end = baseDate.hour(18).minute(0).second(0);
+      const arr: Dayjs[] = [];
+      let cur = start;
+      while (cur.isBefore(end) || cur.isSame(end)) {
+        arr.push(cur);
+        cur = cur.add(45, "minute");
+      }
+      return arr;
+    }, [value]);
+
+    return (
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, p: 2 }}>
+        {times.map((time) => {
+          const isBooked = bookedSlots.some(
+            (slot) =>
+              time.isSame(slot.date, "year") &&
+              time.isSame(slot.date, "month") &&
+              time.isSame(slot.date, "date") &&
+              time.isSame(slot.date + slot.time, "hour") &&
+              time.isSame(slot.date + slot.time, "minute"),
+          );
+
+          return (
+            <Chip
+              key={time.format("HH:mm")}
+              label={time.format("HH:mm")}
+              color={
+                value && value.isSame(time, "minute") ? "primary" : "default"
+              }
+              onClick={() => !isBooked && onChange?.(time)}
+              disabled={isBooked || !doctor}
+            />
+          );
+        })}
+      </Box>
+    );
+  };
+
   const handleChange = (
     fullName: string,
     phone: string,
     email: string,
+    doctor: string,
     year: string,
     month: string,
     date: string,
@@ -83,6 +143,7 @@ const BookingForm: React.FC = () => {
       name: fullName,
       phone: phone,
       email: email,
+      doctor: doctor,
       date: year + " " + month + " " + date,
       time: hour + ":" + (min === "0" ? "00" : min),
       status: "Pending",
@@ -103,7 +164,9 @@ const BookingForm: React.FC = () => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const response = await axios.get(url);
+        const response = await axios.get(url, {
+          params: { doctor },
+        });
         console.log("response", response.data);
         if (response.status !== 200) {
           throw new Error("Failed to fetch bookings");
@@ -124,19 +187,14 @@ const BookingForm: React.FC = () => {
     };
 
     fetchBookings();
-  }, []);
-
-  const isSlotBooked = (date: Dayjs, time: Dayjs) => {
-    return bookedSlots.some(
-      (slot) =>
-        slot.date === date.format("YYYY-MM-DD") &&
-        slot.time === time.format("HH:mm"),
-    );
-  };
+  }, [doctor]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <DemoContainer components={["StaticDateTimePicker"]} sx={{ mb: "64px" }}>
+      <DemoContainer
+        components={["StaticDateTimePicker"]}
+        sx={{ mb: "64px", ".MuiPickersLayout-root": { display: "block" } }}
+      >
         <Box
           sx={{
             fontSize: "2rem",
@@ -208,18 +266,54 @@ const BookingForm: React.FC = () => {
             },
           }}
         />
+        <Box
+          sx={{
+            width: "100%",
+            backgroundColor: "primary.light",
+            "& label.Mui-focused": {
+              color: "#776B5D",
+            },
+            "& .MuiOutlinedInput-root": {
+              "&.Mui-focused fieldset": {
+                borderColor: "#776B5D",
+              },
+            },
+          }}
+        >
+          <FormControl fullWidth>
+            <InputLabel id="doctor">Doctor</InputLabel>
+            <Select
+              labelId="doctor"
+              id="doctor"
+              value={doctor}
+              label="Doctor"
+              onChange={(event) => {
+                setDoctor(event.target.value);
+                setBookingDateTime(null); // reset time
+                setBookedSlots([]); // clear old bookings
+              }}
+            >
+              <MenuItem value={"Doctor 1"}>Doctor 1</MenuItem>
+              <MenuItem value={"Doctor 2"}>Doctor 2</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
         <StaticDateTimePicker
           views={["year", "month", "day", "hours", "minutes"]}
           defaultValue={dayjs()}
+          value={bookingDateTime}
           disablePast
+          ampm={false}
+          disabled={!doctor}
+          viewRenderers={{
+            hours: (params) => <TimeChipsRenderer {...params} />,
+          }}
           shouldDisableTime={(time, view) => {
             return bookedSlots.some((slot) => {
               if (
                 time.isSame(slot.date, "year") &&
                 time.isSame(slot.date, "month") &&
-                time.isSame(slot.date, "date") &&
-                time.isSame(slot.date + slot.time, "hour") &&
-                time.isSame(slot.date + slot.time, "minute")
+                time.isSame(slot.date, "date")
               ) {
                 return true;
               } else {
@@ -227,14 +321,25 @@ const BookingForm: React.FC = () => {
               }
             });
           }}
-          minutesStep={30}
-          ampmInClock
-          onChange={(newValue, context) => {
-            if (context.validationError == null) {
-              setBookingDateTime(newValue);
+          minutesStep={1}
+          onViewChange={(view) => {
+            // NEW: track view and zero time when returning to the day tab
+            setCurrentView(view);
+            if (view === "day") {
+              setBookingDateTime((prev) => (prev ? prev.startOf("day") : prev));
             }
           }}
-          slots={{ actionBar: CustomAction }}
+          onChange={(newValue) => {
+            if (!newValue) return;
+            // NEW: when picking a date while on the 'day' view, snap to 00:00
+            if (currentView === "day") {
+              newValue = newValue.startOf("day");
+            }
+            setBookingDateTime(newValue);
+          }}
+          slots={{
+            actionBar: CustomAction,
+          }}
           slotProps={{
             actionBar: {
               actions: ["clear", "today"],
