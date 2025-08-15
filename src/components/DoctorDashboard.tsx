@@ -33,6 +33,19 @@ interface CalendarEvent {
 }
 
 const DoctorDashboard: React.FC = () => {
+  const token = localStorage.getItem("token");
+  let doctorName = "";
+  if (token) {
+    try {
+      const decodedToken = JSON.parse(atob(token.split(".")[1]));
+      doctorName = decodedToken.userName;
+    } catch (error) {
+      console.error("Failed to decode token:", error);
+    }
+  } else {
+    console.log("No token found in localStorage.");
+  }
+
   const url = "http://localhost:5000/bookings";
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [noteInfo, setNoteInfo] = useState<any>();
@@ -41,9 +54,13 @@ const DoctorDashboard: React.FC = () => {
   const handleClose = () => setTakeNotes(false);
 
   useEffect(() => {
+    if (!doctorName) return;
     const fetchBookings = async () => {
       try {
-        const response = await axios.get(url);
+        console.log("doctor", doctorName);
+        const response = await axios.get(url, {
+          params: { doctor: doctorName },
+        });
         console.log("response", response.data);
         if (response.status !== 200) {
           throw new Error("Failed to fetch bookings");
@@ -80,7 +97,7 @@ const DoctorDashboard: React.FC = () => {
     };
 
     fetchBookings();
-  }, []);
+  }, [doctorName]);
 
   return (
     <>

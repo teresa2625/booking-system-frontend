@@ -23,7 +23,7 @@ import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 
-// TODO: clean up, validation, pre submit check
+// TODO: clean up, validation, pre submit check, first name last name
 
 const BookingForm: React.FC = () => {
   const url = "http://localhost:5000/bookings";
