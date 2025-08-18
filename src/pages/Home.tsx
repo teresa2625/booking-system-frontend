@@ -14,6 +14,8 @@ import HomeTeam from "components/HomeTeam";
 import ContactUs from "components/ContactUs";
 import useRevealOnScroll from "hooks/useRevealOnScroll";
 
+// TODO: breadcrumb, account
+
 const Home: React.FC = () => {
   const bookingRef = useRef<null | HTMLDivElement>(null);
   const serviceRef = useRef<null | HTMLDivElement>(null);

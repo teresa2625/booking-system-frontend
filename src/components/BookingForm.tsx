@@ -23,7 +23,7 @@ import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 
-// TODO: clean up, validation, pre submit check, first name last name
+// TODO: clean up, validation, pre submit check, first name last name, remove submit from date, isReturn, remove email
 
 const BookingForm: React.FC = () => {
   const url = "http://localhost:5000/bookings";
@@ -211,6 +211,7 @@ const BookingForm: React.FC = () => {
           id="outlined-basic"
           label="Full Name"
           variant="outlined"
+          required
           sx={{
             width: "100%",
             backgroundColor: "primary.light",
@@ -231,6 +232,7 @@ const BookingForm: React.FC = () => {
           id="outlined-basic"
           label="Email"
           variant="outlined"
+          required
           onChange={(event) => {
             setContactEmail(event.target.value);
           }}
@@ -251,6 +253,7 @@ const BookingForm: React.FC = () => {
           id="outlined-basic"
           label="Phone number"
           variant="outlined"
+          required
           onChange={(event) => {
             setPhoneNum(event.target.value);
           }}
@@ -288,6 +291,7 @@ const BookingForm: React.FC = () => {
               id="doctor"
               value={doctor}
               label="Doctor"
+              required
               onChange={(event) => {
                 setDoctor(event.target.value);
                 setBookingDateTime(null); // reset time

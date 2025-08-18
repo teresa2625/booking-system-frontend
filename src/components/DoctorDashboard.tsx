@@ -88,6 +88,10 @@ const DoctorDashboard: React.FC = () => {
             start,
             end,
             id: booking.id,
+            extendedProps: {
+              patientEmail: booking.customer_email,
+              patientPhone: booking.customer_phone,
+            },
           };
         });
         setEvents(calendarEvents);
