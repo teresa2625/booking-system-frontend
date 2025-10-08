@@ -6,54 +6,122 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import axios from "axios";
-import { UpdateBooking } from "types/booking";
-import { useState } from "react";
+import { PatientDetail, PatientForm } from "types/booking";
+import { useEffect, useState } from "react";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import Box from "@mui/system/Box";
 import Stack from "@mui/material/Stack";
+import useLazyFetch from "hooks/useLazyFetch";
 
 const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
+  const patientUrl = "http://localhost:5000/patients";
+  const [fetchData, { data, loading, error }] =
+    useLazyFetch<PatientDetail[]>(patientUrl);
   const [isNew, setIsNew] = useState(false);
   const [isReturn, setIsReturn] = useState(false);
-  const [dob, setDob] = useState("");
-  const [address, setAddress] = useState("");
-  const [complaint, setComplaint] = useState("");
-  const [occupation, setOccupation] = useState("");
-  const [currentRX, setCurrentRX] = useState("");
-  const [tests, setTests] = useState("");
-  const [medication, setMedication] = useState("");
-  const [others, setOthers] = useState("");
-  const [neuro, setNeuro] = useState("");
-  const [ortho, setOrtho] = useState("");
-  const [vasc, setVasc] = useState("");
-  const [oe, setOe] = useState("");
-  const [rx, setRx] = useState("");
-  const [dx, setDx] = useState("");
-  const [pxrec, setPxrec] = useState("");
+  const [notes, setNotes] = useState("");
+  const [patientForm, setPatientForm] = useState<PatientForm>({
+    dob: "",
+    address: "",
+    occupation: "",
+    complaint: "",
+    currentRX: "",
+    tests: "",
+    medication: "",
+    others: "",
+    neuro: "",
+    ortho: "",
+    vasc: "",
+    oe: "",
+    rx: "",
+    dx: "",
+    pxrec: "",
+  });
 
-  const handleChange = (patientId: number, patientNotes: string) => {
-    console.log("handleChange");
-    const bookingUpdateFormat = {
-      id: patientId,
-      note: patientNotes,
-      status: "Completed",
-    };
-    handleSubmit(bookingUpdateFormat);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPatientForm((prev) => ({ ...prev, [name]: value }));
   };
-  const handleSubmit = async (data: UpdateBooking) => {
-    console.log("doctor Notes submitted:", data);
+
+  const handleSubmit = async (bookingId: number) => {
+    console.log("doctor Notes submitted:", bookingId);
 
     try {
-      const response = await axios.patch(
-        "http://localhost:5000/bookings",
-        data,
-      );
-      console.log("Booking updated:", response);
+      if (isNew) {
+        const payload = {
+          fileNum: 1,
+          patientName: info?.title,
+          email: info?.extendedProps.patientEmail,
+          phoneNum: info?.extendedProps.patientPhone,
+          notes: "",
+          ...patientForm,
+        };
+        const response = await axios.post(
+          "http://localhost:5000/patients",
+          payload,
+        );
+        console.log("Patients updated:", response);
+      } else {
+        const payload = {
+          patientName: info?.title,
+          email: info?.extendedProps.patientEmail,
+          notes,
+        };
+        const response = await axios.patch(
+          "http://localhost:5000/patients",
+          payload,
+        );
+        console.log("Patients updated:", response);
+      }
+      const bookingUpdate = { id: bookingId, status: "Completed" };
+      console.log("PATCH bookings payload:", bookingUpdate);
+      await axios.patch("http://localhost:5000/bookings", bookingUpdate);
+      handleClose();
+      setIsNew(false);
+      setIsReturn(false);
+      setNotes("");
+      setPatientForm({
+        dob: "",
+        address: "",
+        occupation: "",
+        complaint: "",
+        currentRX: "",
+        tests: "",
+        medication: "",
+        others: "",
+        neuro: "",
+        ortho: "",
+        vasc: "",
+        oe: "",
+        rx: "",
+        dx: "",
+        pxrec: "",
+      });
     } catch (err) {
-      console.log("Booking update failed:", err);
+      console.log("Patients update failed:", err);
     }
   };
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      if (isReturn) {
+        try {
+          const patientName = info?.title;
+
+          const res = await axios.get("http://localhost:5000/patients", {
+            params: { patientName },
+          });
+
+          setNotes(res.data?.notes || "");
+        } catch (err) {
+          console.error("Failed to fetch notes:", err);
+        }
+      }
+    };
+
+    fetchNotes();
+  }, [isReturn, info]);
 
   return (
     <React.Fragment>
@@ -74,13 +142,7 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
             component: "form",
             onSubmit: (event: React.FormEvent<HTMLFormElement>) => {
               event.preventDefault();
-              const formData = new FormData(event.currentTarget);
-              const formJson = Object.fromEntries((formData as any).entries());
-              const notesDetail = formJson.notes;
-
-              console.log(info?.id);
-              handleChange(info?.id, notesDetail);
-              handleClose();
+              handleSubmit(info?.id);
             },
           },
         }}
@@ -148,8 +210,11 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                   defaultValue={info?.extendedProps.patientPhone}
                 />
                 <TextField
-                  id="outlined-basic"
+                  name="dob"
                   label="DOB"
+                  value={patientForm.dob}
+                  onChange={handleInputChange}
+                  id="outlined-basic"
                   variant="outlined"
                   sx={{
                     width: "100%",
@@ -163,11 +228,11 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setDob(event.target.value);
-                  }}
                 />
                 <TextField
+                  name="address"
+                  value={patientForm.address}
+                  onChange={handleInputChange}
                   id="outlined-basic"
                   label="Address"
                   variant="outlined"
@@ -183,12 +248,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setAddress(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="occupation"
+                  value={patientForm.occupation}
+                  onChange={handleInputChange}
                   label="Occupation"
                   variant="outlined"
                   sx={{
@@ -203,12 +268,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setOccupation(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="complaint"
+                  value={patientForm.complaint}
+                  onChange={handleInputChange}
                   label="Complaint"
                   variant="outlined"
                   sx={{
@@ -223,12 +288,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setComplaint(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="currentRX"
+                  value={patientForm.currentRX}
+                  onChange={handleInputChange}
                   label="CurrentRX"
                   variant="outlined"
                   sx={{
@@ -243,12 +308,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setCurrentRX(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="tests"
+                  value={patientForm.tests}
+                  onChange={handleInputChange}
                   label="Tests"
                   variant="outlined"
                   sx={{
@@ -263,12 +328,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setTests(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="medication"
+                  value={patientForm.medication}
+                  onChange={handleInputChange}
                   label="Medication"
                   variant="outlined"
                   sx={{
@@ -283,12 +348,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setMedication(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="others"
+                  value={patientForm.others}
+                  onChange={handleInputChange}
                   label="Others"
                   variant="outlined"
                   sx={{
@@ -303,9 +368,6 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setOthers(event.target.value);
-                  }}
                 />
               </Stack>
               <Stack spacing={2}>
@@ -318,6 +380,9 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                 </Box>
                 <TextField
                   id="outlined-basic"
+                  name="neuro"
+                  value={patientForm.neuro}
+                  onChange={handleInputChange}
                   label="Neuro"
                   variant="outlined"
                   sx={{
@@ -332,12 +397,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setNeuro(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="ortho"
+                  value={patientForm.ortho}
+                  onChange={handleInputChange}
                   label="Ortho"
                   variant="outlined"
                   sx={{
@@ -352,12 +417,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setOrtho(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="vasc"
+                  value={patientForm.vasc}
+                  onChange={handleInputChange}
                   label="Vasc"
                   variant="outlined"
                   sx={{
@@ -372,12 +437,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setVasc(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="oe"
+                  value={patientForm.oe}
+                  onChange={handleInputChange}
                   label="Oe"
                   variant="outlined"
                   sx={{
@@ -392,12 +457,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setOe(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="rx"
+                  value={patientForm.rx}
+                  onChange={handleInputChange}
                   label="Rx"
                   variant="outlined"
                   sx={{
@@ -412,12 +477,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setRx(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="dx"
+                  value={patientForm.dx}
+                  onChange={handleInputChange}
                   label="Dx"
                   variant="outlined"
                   sx={{
@@ -432,12 +497,12 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                       },
                     },
                   }}
-                  onChange={(event) => {
-                    setDx(event.target.value);
-                  }}
                 />
                 <TextField
                   id="outlined-basic"
+                  name="pxrec"
+                  value={patientForm.pxrec}
+                  onChange={handleInputChange}
                   label="Px/Rec"
                   variant="outlined"
                   sx={{
@@ -451,9 +516,6 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                         borderColor: "#776B5D",
                       },
                     },
-                  }}
-                  onChange={(event) => {
-                    setPxrec(event.target.value);
                   }}
                 />
               </Stack>
@@ -478,6 +540,8 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                 label="Notes"
                 fullWidth
                 variant="outlined"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
                 slotProps={{
                   htmlInput: {
                     style: {
@@ -501,7 +565,7 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
           </DialogContent>
         )}
         <DialogActions>
-          {!isNew && !isReturn && (
+          {!isNew && !isReturn ? (
             <>
               <Button
                 sx={{ bgcolor: "primary.dark" }}
@@ -517,9 +581,22 @@ const NotesDialog: React.FC<any> = ({ open, handleClose, info }) => {
                 onClick={() => {
                   setIsNew(false);
                   setIsReturn(true);
+                  fetchData({
+                    patient: info?.title,
+                    email: info?.extendedProps.patientEmail,
+                  });
                 }}
               >
                 Add Notes
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button sx={{ bgcolor: "primary.dark" }} onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button sx={{ bgcolor: "primary.dark" }} type="submit">
+                Send
               </Button>
             </>
           )}

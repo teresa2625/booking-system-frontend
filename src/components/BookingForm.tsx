@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import axios from "axios";
-import { BookedSlots, Booking } from "../types/booking";
+import { BookedSlots, Booking, PatientInfo } from "../types/booking";
 import dayjs, { Dayjs } from "dayjs";
 import { DemoContainer } from "@mui/x-date-pickers/internals/demo";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -22,21 +22,37 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
+import FormLabel from "@mui/material/FormLabel";
+import RadioGroup from "@mui/material/RadioGroup";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Radio from "@mui/material/Radio";
+import useLazyFetch from "hooks/useLazyFetch";
 
 // TODO: clean up, validation, pre submit check, first name last name, remove submit from date, isReturn, remove email
 
 const BookingForm: React.FC = () => {
   const url = "http://localhost:5000/bookings";
+  const patientUrl = "http://localhost:5000/patients/info";
+  const [fetchData, { data, loading, error }] =
+    useLazyFetch<PatientInfo[]>(patientUrl);
+  const [selectedPatient, setSelectedPatient] =
+    React.useState<PatientInfo | null>(null);
   const [bookedSlots, setBookedSlots] = React.useState<BookedSlots[]>([]);
   const [bookingDateTime, setBookingDateTime] = React.useState<Dayjs | null>(
     dayjs(),
   );
   const [currentView, setCurrentView] =
     React.useState<DateOrTimeViewWithMeridiem>("day");
+  const [isReturn, setIsReturn] = React.useState<string>("No");
   const [fullName, setFullName] = React.useState<string>("");
   const [contactEmail, setContactEmail] = React.useState<string>("");
   const [phoneNum, setPhoneNum] = React.useState<string>("");
   const [doctor, setDoctor] = React.useState<string>("");
+
+  const handleSelect = (email: string) => {
+    const patient = data?.find((p) => p.email === email) || null;
+    setSelectedPatient(patient);
+  };
 
   function CustomAction(props: PickersActionBarProps) {
     const { className } = props;
@@ -48,8 +64,8 @@ const BookingForm: React.FC = () => {
           id={`picker-actions-${id}`}
           aria-haspopup="true"
           onClick={() => {
-            setBookingDateTime(null); // reset your controlled value
-            clearValue?.(); // still call MUI’s internal clear just in case
+            setBookingDateTime(null);
+            clearValue?.();
           }}
         >
           Clear
@@ -59,10 +75,20 @@ const BookingForm: React.FC = () => {
           aria-haspopup="true"
           disabled={!doctor}
           onClick={() => {
+            const name =
+              isReturn === "Yes"
+                ? (selectedPatient?.full_name ?? "")
+                : fullName;
+            const phone =
+              isReturn === "Yes" ? (selectedPatient?.phone ?? "") : phoneNum;
+            const email =
+              isReturn === "Yes"
+                ? (selectedPatient?.email ?? "")
+                : contactEmail;
             handleChange(
-              fullName,
-              phoneNum,
-              contactEmail,
+              name,
+              phone,
+              email,
               doctor,
               bookingDateTime?.year() ? bookingDateTime?.year().toString() : "",
               bookingDateTime?.month()
@@ -160,6 +186,14 @@ const BookingForm: React.FC = () => {
       console.log("Booking failed:", err);
     }
   };
+  const handleReturnPatient = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = event.target.value;
+    setIsReturn(selected);
+
+    if (selected === "yes") {
+      fetchData();
+    }
+  };
 
   useEffect(() => {
     if (!doctor) return;
@@ -207,69 +241,106 @@ const BookingForm: React.FC = () => {
           <Typography>{"Home >"}</Typography>
           <Typography>{"Book Appointment"}</Typography>
         </Stack>
-        <TextField
-          id="outlined-basic"
-          label="Full Name"
-          variant="outlined"
-          required
-          sx={{
-            width: "100%",
-            backgroundColor: "primary.light",
-            "& label.Mui-focused": {
-              color: "#776B5D",
-            },
-            "& .MuiOutlinedInput-root": {
-              "&.Mui-focused fieldset": {
-                borderColor: "#776B5D",
-              },
-            },
-          }}
-          onChange={(event) => {
-            setFullName(event.target.value);
-          }}
-        />
-        <TextField
-          id="outlined-basic"
-          label="Email"
-          variant="outlined"
-          required
-          onChange={(event) => {
-            setContactEmail(event.target.value);
-          }}
-          sx={{
-            width: "100%",
-            backgroundColor: "primary.light",
-            "& label.Mui-focused": {
-              color: "#776B5D",
-            },
-            "& .MuiOutlinedInput-root": {
-              "&.Mui-focused fieldset": {
-                borderColor: "#776B5D",
-              },
-            },
-          }}
-        />
-        <TextField
-          id="outlined-basic"
-          label="Phone number"
-          variant="outlined"
-          required
-          onChange={(event) => {
-            setPhoneNum(event.target.value);
-          }}
-          sx={{
-            width: "100%",
-            backgroundColor: "primary.light",
-            "& label.Mui-focused": {
-              color: "#776B5D",
-            },
-            "& .MuiOutlinedInput-root": {
-              "&.Mui-focused fieldset": {
-                borderColor: "#776B5D",
-              },
-            },
-          }}
-        />
+        <FormControl fullWidth>
+          <FormLabel id="demo-radio-buttons-group-label">
+            Return Patient
+          </FormLabel>
+          <RadioGroup
+            id="Is he/she a return patient?"
+            defaultValue={isReturn}
+            name="radio-buttons-group"
+            onChange={handleReturnPatient}
+          >
+            <FormControlLabel value="Yes" control={<Radio />} label="Yes" />
+            <FormControlLabel value="No" control={<Radio />} label="No" />
+          </RadioGroup>
+        </FormControl>
+        {isReturn == "Yes" && (
+          <FormControl fullWidth>
+            <InputLabel id="patient-select-label">Patient Info</InputLabel>
+            <Select
+              labelId="patient-label"
+              onOpen={fetchData}
+              value={selectedPatient?.email || ""}
+              onChange={(e) => handleSelect(e.target.value)}
+              disabled={loading}
+            >
+              {loading && <MenuItem disabled>Loading...</MenuItem>}
+              {error && <MenuItem disabled>Error: {error.message}</MenuItem>}
+              {data?.map((patient) => (
+                <MenuItem key={patient.email} value={patient.email}>
+                  {patient.full_name} ({patient.email})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+        {isReturn == "No" && (
+          <>
+            <TextField
+              id="outlined-basic"
+              label="Full Name"
+              variant="outlined"
+              required
+              sx={{
+                width: "100%",
+                backgroundColor: "primary.light",
+                "& label.Mui-focused": {
+                  color: "#776B5D",
+                },
+                "& .MuiOutlinedInput-root": {
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#776B5D",
+                  },
+                },
+              }}
+              onChange={(event) => {
+                setFullName(event.target.value);
+              }}
+            />
+            <TextField
+              id="outlined-basic"
+              label="Email"
+              variant="outlined"
+              onChange={(event) => {
+                setContactEmail(event.target.value);
+              }}
+              sx={{
+                width: "100%",
+                backgroundColor: "primary.light",
+                "& label.Mui-focused": {
+                  color: "#776B5D",
+                },
+                "& .MuiOutlinedInput-root": {
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#776B5D",
+                  },
+                },
+              }}
+            />
+            <TextField
+              id="outlined-basic"
+              label="Phone number"
+              variant="outlined"
+              required
+              onChange={(event) => {
+                setPhoneNum(event.target.value);
+              }}
+              sx={{
+                width: "100%",
+                backgroundColor: "primary.light",
+                "& label.Mui-focused": {
+                  color: "#776B5D",
+                },
+                "& .MuiOutlinedInput-root": {
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#776B5D",
+                  },
+                },
+              }}
+            />
+          </>
+        )}
         <Box
           sx={{
             width: "100%",
@@ -294,8 +365,8 @@ const BookingForm: React.FC = () => {
               required
               onChange={(event) => {
                 setDoctor(event.target.value);
-                setBookingDateTime(null); // reset time
-                setBookedSlots([]); // clear old bookings
+                setBookingDateTime(null);
+                setBookedSlots([]);
               }}
             >
               <MenuItem value={"Doctor 1"}>Doctor 1</MenuItem>
